@@ -1,16 +1,13 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.HttpsPolicy;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using Refit;
+using League.API.Api;
+using League.API.Services;
 
 namespace League.API
 {
@@ -26,12 +23,19 @@ namespace League.API
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-
+            services.AddRouting(options => options.LowercaseUrls = true);
             services.AddControllers();
             services.AddSwaggerGen(c =>
             {
-                c.SwaggerDoc("v1", new OpenApiInfo { Title = "League.API", Version = "v1" });
+                c.SwaggerDoc("v1", new OpenApiInfo {Title = "League.API", Version = "v1"});
             });
+            services.AddTransient<IRiotSummonerService, RiotSummonerService>();
+            services.AddRefitClient<IRiotApi>()
+                .ConfigureHttpClient(client =>
+                {
+                    client.BaseAddress = new Uri(Configuration["RiotApi:BaseAddress"]);
+                    client.DefaultRequestHeaders.Add("X-Riot-Token", Configuration["RiotApi:ApiKey"]);
+                });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -50,10 +54,7 @@ namespace League.API
 
             app.UseAuthorization();
 
-            app.UseEndpoints(endpoints =>
-            {
-                endpoints.MapControllers();
-            });
+            app.UseEndpoints(endpoints => { endpoints.MapControllers(); });
         }
     }
 }
