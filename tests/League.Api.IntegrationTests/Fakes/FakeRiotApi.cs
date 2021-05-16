@@ -1,13 +1,22 @@
-﻿using System.Threading.Tasks;
+﻿using System.Net.Http;
+using System.Threading.Tasks;
 using League.API.Api;
 using League.API.Api.Responses;
+using Refit;
 
 namespace League.Api.IntegrationTests.Fakes
 {
     public class FakeRiotApi : IRiotApi
     {
-        public Task<GetSummonerByNameResponse> GetSummonerByName(string summonerName)
+        public bool ShouldThrow { get; set; }
+
+        public async Task<GetSummonerByNameResponse> GetSummonerByName(string summonerName)
         {
+            if (ShouldThrow)
+            {
+                var apiException = await ApiException.Create(new HttpRequestMessage(), HttpMethod.Get, new HttpResponseMessage(), null);;
+                throw apiException;
+            }
             var summoner = new GetSummonerByNameResponse()
             {
                 AccountId = "9OnF1YN-vTD7-vzFmVafiDk31yudiaRF1V9RaQR-ygE",
@@ -19,7 +28,7 @@ namespace League.Api.IntegrationTests.Fakes
                 SummonerLevel = 107
             };
 
-            return Task.FromResult(summoner);
+            return summoner;
         }
     }
 }

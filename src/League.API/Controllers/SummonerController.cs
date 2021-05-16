@@ -1,9 +1,9 @@
 ﻿using System;
-using System.ComponentModel.DataAnnotations;
 using System.Net;
 using System.Threading.Tasks;
 using League.API.Models;
 using League.API.Services;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -22,17 +22,26 @@ namespace League.API.Controllers
             _riotSummonerService = riotSummonerService ?? throw new ArgumentNullException(nameof(riotSummonerService));
         }
 
+        [HttpGet]
+        [ProducesResponseType(typeof(ErrorResponse), (int)HttpStatusCode.BadRequest)]
+        public IActionResult Get()
+        {
+            return BadRequest(ErrorResponse.GenerateErrorResponse("summonerName", Errors.SummonerNameNotProvided));
+        }
+
         [HttpGet("{summonerName}")]
         [ProducesResponseType(typeof(GetSummonerByNameResult), (int) HttpStatusCode.OK)]
-        public async Task<IActionResult> GetByName([Required] string summonerName)
+        [ProducesResponseType(typeof(ErrorResponse), (int) HttpStatusCode.NotFound)]
+        [ProducesResponseType(typeof(ErrorResponse), (int) HttpStatusCode.OK)]
+        public async Task<IActionResult> GetByName([FromRoute] GetSummonerByNameRequest request)
         {
-            var request = new GetSummonerByNameRequest() {SummonerName = summonerName};
             var result = await _riotSummonerService.GetBySummonerName(request);
 
-            if (result is null)
-                return NotFound();
-
-            return Ok(result);
+            return result.Match<IActionResult>(
+                Ok,
+                notFound => NotFound(ErrorResponse.GenerateErrorResponse("summonerName", Errors.SummonerNotFound)),
+                error => StatusCode(StatusCodes.Status500InternalServerError, ErrorResponse.GenerateErrorResponse(null, Errors.UnexpectedError))
+            );
         }
     }
 }

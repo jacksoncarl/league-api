@@ -5,9 +5,13 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using Refit;
 using League.API.Api;
+using League.API.Models;
 using League.API.Services;
+using Microsoft.AspNetCore.Mvc;
 
 namespace League.API
 {
@@ -24,7 +28,23 @@ namespace League.API
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddRouting(options => options.LowercaseUrls = true);
-            services.AddControllers();
+            services.AddControllers()
+                .ConfigureApiBehaviorOptions(options =>
+                {
+                    //Could this go in a filter?
+                    options.InvalidModelStateResponseFactory = context =>
+                    {
+                        var errorsInModelState = context.ModelState
+                            .Where(x => x.Value.Errors.Count > 0)
+                            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Errors.Select(x => x.ErrorMessage)).ToArray();
+
+                        (string key, IEnumerable<string> value) = errorsInModelState.FirstOrDefault();
+
+                        var subError = value.FirstOrDefault();
+
+                        return new BadRequestObjectResult(ErrorResponse.GenerateErrorResponse(key, subError));
+                    };
+                });
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo {Title = "League.API", Version = "v1"});

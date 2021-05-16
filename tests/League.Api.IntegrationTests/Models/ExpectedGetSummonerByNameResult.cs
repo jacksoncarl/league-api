@@ -12,7 +12,7 @@
 
         public string Id { get; init; }
 
-        public string Puuid { get; init; }
+        public string PUuid { get; init; }
 
         public long SummonerLevel { get; init; }
     }

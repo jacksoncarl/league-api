@@ -1,13 +1,17 @@
 ﻿using System;
+using System.Net;
 using System.Threading.Tasks;
 using League.API.Api;
+using League.API.Api.Responses;
 using League.API.Models;
+using OneOf;
+using Refit;
 
 namespace League.API.Services
 {
     public interface IRiotSummonerService
     {
-        Task<GetSummonerByNameResult> GetBySummonerName(GetSummonerByNameRequest request);
+        Task<OneOf<GetSummonerByNameResult, GetSummonerByNameNotFound, GetSummonerByNameError>> GetBySummonerName(GetSummonerByNameRequest request);
     }
 
     public class RiotSummonerService : IRiotSummonerService
@@ -19,19 +23,31 @@ namespace League.API.Services
             _riotApi = riotApi ?? throw new ArgumentNullException(nameof(riotApi));
         }
 
-        public async Task<GetSummonerByNameResult> GetBySummonerName(GetSummonerByNameRequest request)
+        public async Task<OneOf<GetSummonerByNameResult, GetSummonerByNameNotFound, GetSummonerByNameError>> GetBySummonerName(GetSummonerByNameRequest request)
         {
-            var response = await _riotApi.GetSummonerByName(request.SummonerName);
-            return new GetSummonerByNameResult
+            try
             {
-                AccountId = response.AccountId,
-                ProfileIconId = response.ProfileIconId,
-                RevisionDate = response.RevisionDate,
-                Name = response.Name,
-                Id = response.Id,
-                Puuid = response.Puuid,
-                SummonerLevel = response.SummonerLevel
-            };
+                GetSummonerByNameResponse response = await _riotApi.GetSummonerByName(request.SummonerName);
+
+                return new GetSummonerByNameResult
+                {
+                    AccountId = response.AccountId,
+                    ProfileIconId = response.ProfileIconId,
+                    RevisionDate = response.RevisionDate,
+                    Name = response.Name,
+                    Id = response.Id,
+                    PUuid = response.Puuid,
+                    SummonerLevel = response.SummonerLevel
+                };
+            }
+            catch (ApiException exception)
+            {
+                return exception.StatusCode switch
+                {
+                    HttpStatusCode.NotFound => new GetSummonerByNameNotFound(),
+                    _ => new GetSummonerByNameError(new[] { Errors.UnexpectedError }),
+                };
+            }
         }
     }
 }
