@@ -50,12 +50,14 @@ namespace League.API
                 c.SwaggerDoc("v1", new OpenApiInfo {Title = "League.API", Version = "v1"});
             });
             services.AddTransient<IRiotSummonerService, RiotSummonerService>();
+            services.AddScoped<HttpLoggingHandler>();
             services.AddRefitClient<IRiotApi>()
                 .ConfigureHttpClient(client =>
                 {
                     client.BaseAddress = new Uri(Configuration["RiotApi:BaseAddress"]);
                     client.DefaultRequestHeaders.Add("X-Riot-Token", Configuration["RiotApi:ApiKey"]);
-                });
+                })
+                .AddHttpMessageHandler<HttpLoggingHandler>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
